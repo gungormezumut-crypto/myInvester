@@ -11,13 +11,16 @@ import https from "https";
 dotenv.config();
 
 function keepAlive() {
-  setInterval(() => {
+  const ping = () => {
     https.get("https://myinvester.onrender.com/latest", (res) => {
       console.log("Keep-alive ping:", res.statusCode);
     }).on("error", (err) => {
       console.log("Keep-alive error:", err.message);
     });
-  }, 10 * 60 * 1000); // 10 dakikada bir
+  };
+
+  ping(); // hemen bir kez çalıştır
+  setInterval(ping, 10 * 60 * 1000); // sonra her 10 dakikada bir
 }
 
 console.log(mongoose.connection === Rate.db); // true mu false mu?
