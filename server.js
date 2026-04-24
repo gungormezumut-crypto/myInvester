@@ -8,6 +8,8 @@ import mongoose from "mongoose";
 import https from "https";
 
 
+dotenv.config();
+
 function keepAlive() {
   setInterval(() => {
     https.get("https://myinvester.onrender.com/latest", (res) => {
@@ -19,8 +21,6 @@ function keepAlive() {
 }
 
 console.log(mongoose.connection === Rate.db); // true mu false mu?
-
-dotenv.config();
 
 const app = express();
 app.use(cors());
