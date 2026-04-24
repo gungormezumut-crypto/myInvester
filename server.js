@@ -5,6 +5,18 @@ import cors from "cors";
 import dotenv from "dotenv";
 import Rate from "./models/rate.js";
 import mongoose from "mongoose";
+import https from "https";
+
+
+function keepAlive() {
+  setInterval(() => {
+    https.get("https://myinvester.onrender.com/latest", (res) => {
+      console.log("Keep-alive ping:", res.statusCode);
+    }).on("error", (err) => {
+      console.log("Keep-alive error:", err.message);
+    });
+  }, 10 * 60 * 1000); // 10 dakikada bir
+}
 
 console.log(mongoose.connection === Rate.db); // true mu false mu?
 
@@ -94,6 +106,7 @@ async function startServer() {
     await mongoose.connect(process.env.MONGO_URI);
 
     console.log("Mongo bağlandı ✅");
+    keepAlive(); 
 
     app.listen(process.env.PORT || 3000, () => {
       console.log("Server çalışıyor 🚀");
