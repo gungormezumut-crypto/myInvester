@@ -71,6 +71,10 @@ cron.schedule("0 * * * *", async () => {
 
   const converted = convertToTRY(latest);
 
+  // 24 saatten eski kayıtları sil
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await Rate.deleteMany({ createdAt: { $lt: oneDayAgo } });
+
   await Rate.create({ rates: converted });
 
   console.log("DB kaydedildi");
