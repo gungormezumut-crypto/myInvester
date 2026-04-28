@@ -4,6 +4,7 @@ import cron from "node-cron";
 import cors from "cors";
 import dotenv from "dotenv";
 import Rate from "./models/rate.js";
+import YearlyRate from "./models/yearlyrate.js";
 import mongoose from "mongoose";
 import https from "https";
 
@@ -63,6 +64,8 @@ function convertToTRY(data) {
 }
 
 // CRON
+
+//Saatlik veri
 cron.schedule("0 * * * *", async () => {
   console.log("Saatlik veri çekiliyor:", new Date());
 
@@ -78,6 +81,44 @@ cron.schedule("0 * * * *", async () => {
   await Rate.create({ rates: converted });
 
   console.log("DB kaydedildi");
+});
+
+
+//Günlük veri
+cron.schedule("1 0 * * *", async () => {
+  console.log("---------------------");
+  console.log("Cron Görevi Başladı: Döviz Kurları Güncelleniyor...");
+  
+  try {
+    const data = await getLatestRates();
+    if (!data) throw new Error("API'den veri alınamadı.");
+
+    const converted = convertToTRY(data);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 1. Ana modelini güncelle (En son veri için)
+    await Rate.findOneAndUpdate({}, { rates: converted }, { upsert: true });
+
+    // 2. Geçmiş (YearlyRate) modeline ekle veya güncelle
+    await YearlyRate.findOneAndUpdate(
+      { date: today },
+      { rates: converted },
+      { upsert: true }
+    );
+
+    // 3. 365 günden eski verileri temizle (Veritabanını hafif tutar)
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - 365);
+    const deletedCount = await YearlyRate.deleteMany({ date: { $lt: limitDate } });
+
+    console.log(`Cron Başarılı: ${today.toLocaleDateString()} verisi kaydedildi.`);
+    console.log(`Eski Veri Temizliği: ${deletedCount.deletedCount} adet eski kayıt silindi.`);
+    
+  } catch (err) {
+    console.error("Cron hatası:", err.message);
+  }
+  console.log("---------------------");
 });
 
 // ROUTES
@@ -118,6 +159,7 @@ async function startServer() {
     app.listen(process.env.PORT || 3000, () => {
       console.log("Server çalışıyor 🚀");
     });
+
 
   } catch (err) {
     console.error("Mongo bağlantı hatası ❌", err);
