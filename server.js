@@ -65,6 +65,12 @@ function convertToTRY(data) {
 
 // CRON
 
+export let hourlyRates = [];
+export let weeklyRates = [];
+export let monthlyRates = [];
+export let threeMonthRates = [];
+export let yearlyRates = [];
+
 //Saatlik veri
 cron.schedule("0 * * * *", async () => {
   console.log("Saatlik veri çekiliyor:", new Date());
@@ -81,6 +87,11 @@ cron.schedule("0 * * * *", async () => {
   await Rate.create({ rates: converted });
 
   console.log("DB kaydedildi");
+
+  hourlyRates = await Rate.find({
+    createdAt: { $gte: oneDayAgo }
+  }).sort({ createdAt: 1 });
+
 });
 
 
@@ -119,6 +130,33 @@ cron.schedule("1 0 * * *", async () => {
     console.error("Cron hatası:", err.message);
   }
   console.log("---------------------");
+
+  // Filtreleme tarihleri
+const lastWeek = new Date(new Date().setDate(today.getDate() - 7));
+const lastMonth = new Date(new Date().setMonth(today.getMonth() - 1));
+const lastThreeMonths = new Date(new Date().setMonth(today.getMonth() - 3));
+const lastYear = new Date(new Date().setFullYear(today.getFullYear() - 1));
+
+
+ weeklyRates = await YearlyRate.find({
+  date: { $gte: lastWeek }
+}).sort({ date: 1 }); // Eskiden yeniye sıralar
+
+// Son 1 Ay
+ monthlyRates = await YearlyRate.find({
+  date: { $gte: lastMonth }
+}).sort({ date: 1 });
+
+// Son 3 Ay
+ threeMonthRates = await YearlyRate.find({
+  date: { $gte: lastThreeMonths }
+}).sort({ date: 1 });
+
+// Son 1 Yıl
+ yearlyRates = await YearlyRate.find({
+  date: { $gte: lastYear }
+}).sort({ date: 1 });
+
 });
 
 // ROUTES
@@ -167,4 +205,5 @@ async function startServer() {
 }
 
 startServer();
+
 
