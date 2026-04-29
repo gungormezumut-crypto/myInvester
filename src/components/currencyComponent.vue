@@ -1,17 +1,19 @@
 <template>
-<div :class='[height , width]' class="rounded-xl   shadow-[0_7px_29px_0_rgba(17,146,13,0.2)] p-3 ">
-
+<div :class='[height , width]' class="rounded-xl shadow-[0_7px_29px_0_rgba(17,146,13,0.2)] p-3 ">
+<div id="chart"></div>
 </div>
 </template>
 
 
 <script>
 
-import 'apexcharts';
-import {  currenciesCache , getCurrencyRates } from '../../server.js';
+import ApexCharts from 'apexcharts';
+//import { hourlyRates , weeklyRates , monthlyRates ,  threeMonthRates , yearlyRates } from '../../server.js';
 
 export default{
 
+
+  
     props:['height','width','chartType'],
 
     data(){
@@ -65,6 +67,7 @@ chart.render();
     
     mounted(){
          this.chartCreate();
+    
     }
 
 

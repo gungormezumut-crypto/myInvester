@@ -7,7 +7,8 @@ import Rate from "./models/rate.js";
 import YearlyRate from "./models/yearlyrate.js";
 import mongoose from "mongoose";
 import https from "https";
-
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 
@@ -65,11 +66,7 @@ function convertToTRY(data) {
 
 // CRON
 
-export let hourlyRates = [];
-export let weeklyRates = [];
-export let monthlyRates = [];
-export let threeMonthRates = [];
-export let yearlyRates = [];
+
 
 //Saatlik veri
 cron.schedule("0 * * * *", async () => {
@@ -88,11 +85,32 @@ cron.schedule("0 * * * *", async () => {
 
   console.log("DB kaydedildi");
 
-  hourlyRates = await Rate.find({
-    createdAt: { $gte: oneDayAgo }
-  }).sort({ createdAt: 1 });
+      // Güncel 24 saatlik veriyi çek
+    const ratesForJson = await Rate.find({
+      createdAt: { $gte: oneDayAgo }
+    }).sort({ createdAt: 1 });
+
+    // --- JSON DOSYASINA YAZMA İŞLEMİ ---
+    const dir = "./datasets";
+    const filePath = path.join(dir, "hourly.json");
+
+    try {
+    // Klasör kontrolü
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // writeFileSync: Dosya varsa içini tamamen boşaltır (sıfırlar) ve yeni datayı yazar.
+    fs.writeFileSync(filePath, JSON.stringify(ratesForJson, null, 2), "utf-8");
+      
+      console.log(`✅ İşlem Başarılı: ${ratesForJson.length} kayıt hourly.json dosyasına sıfırdan yazıldı.`);
+    } catch (err) {
+      console.error("❌ Dosya yazılırken hata oluştu:", err);
+    }
+
 
 });
+
 
 
 //Günlük veri
@@ -132,30 +150,48 @@ cron.schedule("1 0 * * *", async () => {
   console.log("---------------------");
 
   // Filtreleme tarihleri
-const lastWeek = new Date(new Date().setDate(today.getDate() - 7));
-const lastMonth = new Date(new Date().setMonth(today.getMonth() - 1));
-const lastThreeMonths = new Date(new Date().setMonth(today.getMonth() - 3));
-const lastYear = new Date(new Date().setFullYear(today.getFullYear() - 1));
+const periods = [
+  { 
+    name: "weekly", 
+    date: new Date(new Date().setDate(today.getDate() - 7)) 
+  },
+  { 
+    name: "monthly", 
+    date: new Date(new Date().setMonth(today.getMonth() - 1)) 
+  },
+  { 
+    name: "3monthly", 
+    date: new Date(new Date().setMonth(today.getMonth() - 3)) 
+  },
+  { 
+    name: "yearly", 
+    date: new Date(new Date().setFullYear(today.getFullYear() - 1)) 
+  }
+];
 
 
- weeklyRates = await YearlyRate.find({
-  date: { $gte: lastWeek }
-}).sort({ date: 1 }); // Eskiden yeniye sıralar
+ try {
+  // Klasör kontrolü
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 
-// Son 1 Ay
- monthlyRates = await YearlyRate.find({
-  date: { $gte: lastMonth }
-}).sort({ date: 1 });
+  // 2. Her periyot için DB'den çek ve JSON'a yaz
+  for (const period of periods) {
+    const data = await YearlyRate.find({
+      date: { $gte: period.date }
+    }).sort({ date: 1 });
 
-// Son 3 Ay
- threeMonthRates = await YearlyRate.find({
-  date: { $gte: lastThreeMonths }
-}).sort({ date: 1 });
+    const filePath = path.join(dir, `${period.name}.json`);
 
-// Son 1 Yıl
- yearlyRates = await YearlyRate.find({
-  date: { $gte: lastYear }
-}).sort({ date: 1 });
+    // fs.writeFileSync dosyayı her seferinde sıfırlar ve temiz veri yazar
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+    
+    console.log(`✅ ${period.name}.json güncellendi (${data.length} kayıt).`);
+  }
+} catch (error) {
+  console.error("❌ JSON dosyaları yazılırken hata oluştu:", error);
+}
 
 });
 
@@ -197,6 +233,7 @@ async function startServer() {
     app.listen(process.env.PORT || 3000, () => {
       console.log("Server çalışıyor 🚀");
     });
+
 
 
   } catch (err) {
