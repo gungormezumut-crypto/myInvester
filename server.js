@@ -7,8 +7,7 @@ import Rate from "./models/rate.js";
 import YearlyRate from "./models/yearlyrate.js";
 import mongoose from "mongoose";
 import https from "https";
-import fs from "fs";
-import path from "path";
+
 
 dotenv.config();
 
@@ -85,29 +84,6 @@ cron.schedule("0 * * * *", async () => {
 
   console.log("DB kaydedildi");
 
-      // Güncel 24 saatlik veriyi çek
-    const ratesForJson = await Rate.find({
-      createdAt: { $gte: oneDayAgo }
-    }).sort({ createdAt: 1 });
-
-    // --- JSON DOSYASINA YAZMA İŞLEMİ ---
-    const dir = "./datasets";
-    const filePath = path.join(dir, "hourly.json");
-
-    try {
-    // Klasör kontrolü
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    // writeFileSync: Dosya varsa içini tamamen boşaltır (sıfırlar) ve yeni datayı yazar.
-    fs.writeFileSync(filePath, JSON.stringify(ratesForJson, null, 2), "utf-8");
-      
-      console.log(`✅ İşlem Başarılı: ${ratesForJson.length} kayıt hourly.json dosyasına sıfırdan yazıldı.`);
-    } catch (err) {
-      console.error("❌ Dosya yazılırken hata oluştu:", err);
-    }
-
 
 });
 
@@ -117,83 +93,42 @@ cron.schedule("0 * * * *", async () => {
 cron.schedule("1 0 * * *", async () => {
   console.log("---------------------");
   console.log("Cron Görevi Başladı: Döviz Kurları Güncelleniyor...");
-  
+
+  // ✅ today'i en dışa al, her iki try bloğu da erişebilsin
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // ── Bölüm 1: Kurları çek ve kaydet ──────────────────────────
   try {
     const data = await getLatestRates();
     if (!data) throw new Error("API'den veri alınamadı.");
 
     const converted = convertToTRY(data);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
-    // 1. Ana modelini güncelle (En son veri için)
     await Rate.findOneAndUpdate({}, { rates: converted }, { upsert: true });
 
-    // 2. Geçmiş (YearlyRate) modeline ekle veya güncelle
     await YearlyRate.findOneAndUpdate(
       { date: today },
       { rates: converted },
       { upsert: true }
     );
 
-    // 3. 365 günden eski verileri temizle (Veritabanını hafif tutar)
     const limitDate = new Date();
     limitDate.setDate(limitDate.getDate() - 365);
     const deletedCount = await YearlyRate.deleteMany({ date: { $lt: limitDate } });
 
     console.log(`Cron Başarılı: ${today.toLocaleDateString()} verisi kaydedildi.`);
     console.log(`Eski Veri Temizliği: ${deletedCount.deletedCount} adet eski kayıt silindi.`);
-    
+
   } catch (err) {
     console.error("Cron hatası:", err.message);
   }
+
   console.log("---------------------");
-
-  // Filtreleme tarihleri
-const periods = [
-  { 
-    name: "weekly", 
-    date: new Date(new Date().setDate(today.getDate() - 7)) 
-  },
-  { 
-    name: "monthly", 
-    date: new Date(new Date().setMonth(today.getMonth() - 1)) 
-  },
-  { 
-    name: "3monthly", 
-    date: new Date(new Date().setMonth(today.getMonth() - 3)) 
-  },
-  { 
-    name: "yearly", 
-    date: new Date(new Date().setFullYear(today.getFullYear() - 1)) 
-  }
-];
-
-
- try {
-  // Klasör kontrolü
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  // 2. Her periyot için DB'den çek ve JSON'a yaz
-  for (const period of periods) {
-    const data = await YearlyRate.find({
-      date: { $gte: period.date }
-    }).sort({ date: 1 });
-
-    const filePath = path.join(dir, `${period.name}.json`);
-
-    // fs.writeFileSync dosyayı her seferinde sıfırlar ve temiz veri yazar
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
-    
-    console.log(`✅ ${period.name}.json güncellendi (${data.length} kayıt).`);
-  }
-} catch (error) {
-  console.error("❌ JSON dosyaları yazılırken hata oluştu:", error);
-}
-
 });
+
+
+
 
 // ROUTES
 function requireDB(req, res, next) {
@@ -213,14 +148,36 @@ app.get("/latest", requireDB, async (req, res) => {
   }
 });
 
-app.get("/history", requireDB, async (req, res) => {
+app.get("/api/rates/:period", async (req, res) => {
   try {
-    const data = await Rate.find().sort({ createdAt: -1 }).limit(24);
+    const days = { weekly: 7, monthly: 30, "3monthly": 90, yearly: 365 };
+    
+    // Geçersiz period gelirse hata ver
+    if (!days[req.params.period]) {
+      return res.status(400).json({ error: "Geçersiz periyot" });
+    }
+
+    const date = new Date();
+    date.setDate(date.getDate() - days[req.params.period]);
+
+    const data = await YearlyRate.find({ date: { $gte: date } }).sort({ date: 1 });
     res.json(data);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
+
+/*
+/api/rates/latest     → en güncel kur
+/api/rates/weekly     → son 7 gün
+/api/rates/monthly    → son 30 gün
+/api/rates/3monthly   → son 90 gün
+/api/rates/yearly     → son 365 gün
+*/
 
 // 🔥 KRİTİK FIX
 async function startServer() {

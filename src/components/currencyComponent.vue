@@ -8,12 +8,18 @@
 <script>
 
 import ApexCharts from 'apexcharts';
-//import { hourlyRates , weeklyRates , monthlyRates ,  threeMonthRates , yearlyRates } from '../../server.js';
+//import hourlyRates from '../../datasets/hourly.json' with { type: 'json' };
+
+
 
 export default{
 
+  hourlyRates : [],
+  weeeklyRates : [],
+  monthlyRates : [],
+  monthly3Rates : [],
+  yearlyRates : [],
 
-  
     props:['height','width','chartType'],
 
     data(){
@@ -22,10 +28,44 @@ export default{
     },
 
     methods:{
-        chartCreate(){
-            if(this.chartType == 'area'){
 
-                            var options = {
+    getCurrencyDaily(currency){
+// 1. Veriyi grupla
+const grouped = hourlyRates.reduce((acc, entry) => {
+  const rates = entry.rates || {};
+  
+  Object.entries(rates).forEach(([symbol, value]) => {
+    if (!acc[symbol]) {
+      acc[symbol] = [];
+    }
+    
+    // Değeri 2 basamağa sabitleyip sayıya geri çeviriyoruz
+    const fixedValue = Number(value.toFixed(2)); 
+    acc[symbol].push(fixedValue);
+  });
+  
+  return acc;
+}, {});
+
+// 2. Formatla
+const indexedData = Object.entries(grouped).map(([symbol, values], index) => {
+  return {
+    id: index,
+    name: symbol,
+    rate: values // Artık dizi içindeki her rakam fixed (örn: 12.26)
+  };
+});
+
+var filtereddata = indexedData.find(item => item.name === currency);
+return filtereddata.rate    
+},
+
+  chartCreate(){
+    if(this.chartType == 'area'){
+
+
+
+  var options = {
   chart: {
     height: 280,
     type: "area"
@@ -35,8 +75,8 @@ export default{
   },
   series: [
     {
-      name: "Series 1",
-      data: [45, 52, 38, 45, 19, 23, 2]
+      name: "USD",
+      data: this.getCurrencyDaily("USD")
     }
   ],
   fill: {
@@ -67,7 +107,7 @@ chart.render();
     
     mounted(){
          this.chartCreate();
-    
+          
     }
 
 
