@@ -32,6 +32,7 @@ app.use(express.json());
 
 
 
+
 // API'den veri çek
 async function getLatestRates() {
   try {
@@ -141,7 +142,7 @@ function requireDB(req, res, next) {
 // Route'lara ekle
 app.get("/latest", requireDB, async (req, res) => {
   try {
-    const data = await Rate.findOne().sort({ createdAt: -1 });
+     const data = await Rate.find().sort({ createdAt: -1 });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
