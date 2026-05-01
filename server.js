@@ -79,16 +79,12 @@ cron.schedule("0 * * * *", async () => {
 
   await Rate.create({ rates: converted });
 
-  // En yeni 24 kaydı bul, gerisini sil
-  const recent = await Rate.find()
-    .sort({ createdAt: -1 })
-    .limit(24)
-    .select("_id");
-
-  const keepIds = recent.map(r => r._id);
-  await Rate.deleteMany({ _id: { $nin: keepIds } });
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await Rate.deleteMany({ createdAt: { $lte: oneDayAgo } });
 
   console.log("DB kaydedildi");
+}, {
+  timezone: "Europe/Istanbul"
 });
 
 
@@ -126,6 +122,8 @@ cron.schedule("1 0 * * *", async () => {
   }
 
   console.log("---------------------");
+} ,{
+  timezone: "Europe/Istanbul"
 });
 
 
@@ -172,14 +170,6 @@ app.get("/api/rates/:period", async (req, res) => {
 
 
 
-
-/*
-/api/rates/latest     → en güncel kur
-/api/rates/weekly     → son 7 gün
-/api/rates/monthly    → son 30 gün
-/api/rates/3monthly   → son 90 gün
-/api/rates/yearly     → son 365 gün
-*/
 
 // 🔥 KRİTİK FIX
 async function startServer() {

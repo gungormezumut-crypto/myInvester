@@ -15,3 +15,11 @@ export const getRates = async (period) => {
   return data;
 };
 
+
+/*
+/api/rates/latest     → en güncel kur
+/api/rates/weekly     → son 7 gün
+/api/rates/monthly    → son 30 gün
+/api/rates/3monthly   → son 90 gün
+/api/rates/yearly     → son 365 gün
+*/
