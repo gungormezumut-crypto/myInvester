@@ -70,17 +70,16 @@ function convertToTRY(data) {
 
 //Saatlik veri
 cron.schedule("0 * * * *", async () => {
-  console.log("Saatlik veri çekiliyor:", new Date());
-
   const latest = await getLatestRates();
   if (!latest) return;
 
   const converted = convertToTRY(latest);
 
-  await Rate.create({ rates: converted });
-
-  const oneDayAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+  // 24 saatten eski kayıtları sil
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   await Rate.deleteMany({ createdAt: { $lt: oneDayAgo } });
+
+  await Rate.create({ rates: converted });
 
   console.log("DB kaydedildi");
 }, {
