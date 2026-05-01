@@ -1,5 +1,13 @@
 <template>
 <div :class='[height , width]' class="rounded-xl shadow-[0_7px_29px_0_rgba(17,146,13,0.2)] p-3 ">
+<div v-if="btns == true" class="flex gap-5 mt-3 mb-1 mx-3">
+<button @click="selectedPick('yearly')"   :class="selected == 'yearly' ? '!bg-green/85' : 'bg-green-500/55'" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">Yıllık</button>
+<button @click="selectedPick('monthly3')" :class="selected == 'monthly3' ? '!bg-green/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">3 Aylık</button>
+<button @click="selectedPick('monthly')"  :class="selected == 'monthly' ? '!bg-green/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">Aylık</button>
+<button @click="selectedPick('weekly')"   :class="selected == 'weekly' ? '!bg-green/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">Haftalık</button>
+<button @click="selectedPick('daily')"    :class="selected == 'daily' ? '!bg-green/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">Günlük</button>
+
+</div> 
 <div :id="chartid"></div>
 </div>
 </template>
@@ -9,8 +17,9 @@
 
 import ApexCharts from 'apexcharts';
 import { useRateStore } from "../../rateStore";
+import { ref } from 'vue';
 
-
+const selected = ref('daily')
 export default{
 
 
@@ -20,21 +29,22 @@ export default{
       },
 
 
-    props:['height','width','chartType','chartid'],
+    props:['height','width','chartType','chartid','btns'],
 
     data(){
         return{
-
+            currency: "USD",
+            
         }
     },
     
     computed: {
-  daily() {
-  return this.store.daily;
-  },
-    weekly() {
-  return this.store.weekly;
-  },
+    daily() {
+    return this.store.daily;
+    },
+      weekly() {
+    return this.store.weekly;
+    },
     monthly() {
       return this.store.monthly;
     },
@@ -50,7 +60,7 @@ export default{
         
     async mounted(){
 
-   this.selectedPick("daily");
+    this.selectedPick("daily");
   
           
     },
@@ -113,46 +123,47 @@ export default{
       },
 
        processChartData(date,data, currency) {
-    const values = data.map(item => item.rates[currency].toFixed(2));
+        const values = data.map(item => item.rates[currency].toFixed(2));
 
-    const labels = data.map((item, index, arr) => {
+        const labels = data.map((item, index, arr) => {
 
-            console.log(item.createdAt);
 
-      if (date === 'daily') {
 
-const date = new Date(item.createdAt);
-const hour = date.getHours().toString().padStart(2, '0') + ':00';
+        if (date === 'daily') {
 
-    if (index === 0) return `${hour}`;
-    if (index === arr.length - 1) return `${hour}`;
+        const date = new Date(item.createdAt);
+        const hour = date.getHours().toString().padStart(2, '0') + ':00';
 
-    return hour;
-  }else{
-    const date = new Date(item.createdAt);
-    const day = date.getDate().toString().padStart(2, '0');
-    return day;
-  }
-  });
+          if (index === 0) return `${hour}`;
+          if (index === arr.length - 1) return `${hour}`;
 
-  return { values, labels };
-},
+          return hour;
+        }else{
+          const date = new Date(item.createdAt);
+          const day = date.getDate().toString().padStart(2, '0');
+          return day;
+        }
+        });
+
+        return { values, labels };
+        },
 
        selectedPick(date) {
+         selected.value = date;
         if (date === 'daily') {
-          return this.addChart(date, this.daily, this.chartid,this.chartType, "USD" );
+          return this.addChart(date, this.daily, this.chartid,this.chartType, this.currency );
         } else if (date === 'weekly') {
           //return addChart(date, this.weekly, this.chartid,this.chartType, "USD" );
-          return console.log(this.weekly);
+       
         } else if (date === 'monthly') {
           //return addChart(date, this.monthly, this.chartid,this.chartType, "USD" );
-          return console.log(this.monthly);
+         
         } else if (date === 'monthly3') {
         // return addChart(date, this.monthly3, this.chartid,this.chartType, "USD" );
-          return console.log(this.monthly3);
+      
         } else if (date === 'yearly') {
         // return addChart(date, this.yearly, this.chartid,this.chartType, "USD" );
-          return console.log(this.yearly);
+   
         }
   },
 

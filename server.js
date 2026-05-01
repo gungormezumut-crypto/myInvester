@@ -75,11 +75,18 @@ cron.schedule("0 * * * *", async () => {
 
   const converted = convertToTRY(latest);
 
-  // 24 saatten eski kayıtları sil
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  await Rate.deleteMany({ createdAt: { $lt: oneDayAgo } });
-
   await Rate.create({ rates: converted });
+
+  // 1. 25 saatten eskiyi sil
+  const twentyFiveHoursAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+  await Rate.deleteMany({ createdAt: { $lt: twentyFiveHoursAgo } });
+
+  // 2. Yine de 25'ten fazlaysa en yenileri tut
+  const count = await Rate.countDocuments();
+  if (count > 25) {
+    const keep = await Rate.find().sort({ createdAt: -1 }).limit(25).select('_id');
+    await Rate.deleteMany({ _id: { $nin: keep.map(r => r._id) } });
+  }
 
   console.log("DB kaydedildi");
 }, {
