@@ -77,37 +77,37 @@ cron.schedule("0 * * * *", async () => {
 
   const converted = convertToTRY(latest);
 
-  // 24 saatten eski kayıtları sil
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  await Rate.deleteMany({ createdAt: { $lt: oneDayAgo } });
-
   await Rate.create({ rates: converted });
 
+  // En yeni 24 kaydı bul, gerisini sil
+  const recent = await Rate.find()
+    .sort({ createdAt: -1 })
+    .limit(24)
+    .select("_id");
+
+  const keepIds = recent.map(r => r._id);
+  await Rate.deleteMany({ _id: { $nin: keepIds } });
+
   console.log("DB kaydedildi");
-
-
 });
 
 
 
-//Günlük veri
+// Günlük veri
 cron.schedule("1 0 * * *", async () => {
   console.log("---------------------");
   console.log("Cron Görevi Başladı: Döviz Kurları Güncelleniyor...");
 
-  // ✅ today'i en dışa al, her iki try bloğu da erişebilsin
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // ── Bölüm 1: Kurları çek ve kaydet ──────────────────────────
   try {
     const data = await getLatestRates();
     if (!data) throw new Error("API'den veri alınamadı.");
 
     const converted = convertToTRY(data);
 
-    await Rate.findOneAndUpdate({}, { rates: converted }, { upsert: true });
-
+    // ✅ Sadece günlük/yıllık modeli güncelle
     await YearlyRate.findOneAndUpdate(
       { date: today },
       { rates: converted },
@@ -127,6 +127,7 @@ cron.schedule("1 0 * * *", async () => {
 
   console.log("---------------------");
 });
+
 
 
 
