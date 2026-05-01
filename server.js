@@ -79,8 +79,8 @@ cron.schedule("0 * * * *", async () => {
 
   await Rate.create({ rates: converted });
 
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  await Rate.deleteMany({ createdAt: { $lte: oneDayAgo } });
+  const oneDayAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+  await Rate.deleteMany({ createdAt: { $lt: oneDayAgo } });
 
   console.log("DB kaydedildi");
 }, {
