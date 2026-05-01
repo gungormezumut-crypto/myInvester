@@ -7,6 +7,8 @@ export const useRateStore = defineStore("rate", {
     daily: null,
     weekly: null,
     monthly: null,
+    monthly3: null,
+    yearly: null,
     loaded: false,
   }),
 
