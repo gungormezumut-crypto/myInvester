@@ -151,7 +151,7 @@ app.get("/latest", requireDB, async (req, res) => {
 
 app.get("/api/rates/:period", async (req, res) => {
   try {
-    const days = { weekly: 7, monthly: 30, "3monthly": 90, yearly: 365 };
+    const days = { weekly: 7, monthly: 30, "monthly3": 90, yearly: 365 };
     
     // Geçersiz period gelirse hata ver
     if (!days[req.params.period]) {

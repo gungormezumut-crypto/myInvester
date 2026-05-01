@@ -8,24 +8,48 @@
 <script>
 
 import ApexCharts from 'apexcharts';
-import { getDaily, getRates } from '../../api.js'
+import { useRateStore } from "../../rateStore";
 
 
 export default{
+
+
+    setup() {
+        const store = useRateStore();
+        return { store };
+      },
 
 
     props:['height','width','chartType'],
 
     data(){
         return{
-          daily: null,
+   
         }
     },
+    
+    computed: {
+  daily() {
+  return this.store.daily;
+  },
+    weekly() {
+  return this.store.weekly;
+  },
+    monthly() {
+      return this.store.monthly;
+    },
+    monthly3() {
+      return this.store.monthly3;
+    },
+    yearly() {
+      return this.store.yearly;
+    },
+},
 
         
     async mounted(){
-       this.daily = await getDaily()  
-      console.log(this.daily);
+      
+  console.log(this.daily);
   
           
     },

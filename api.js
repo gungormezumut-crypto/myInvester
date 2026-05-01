@@ -1,4 +1,6 @@
 // src/api.js
+
+
 const BASE_URL = "https://myinvester.onrender.com";
 
 export const getDaily = async () => {
@@ -12,3 +14,4 @@ export const getRates = async (period) => {
   const data = await res.json();
   return data;
 };
+
