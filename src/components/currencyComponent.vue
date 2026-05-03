@@ -1,11 +1,11 @@
 <template>
 <div :class='[height , width]' class="rounded-xl shadow-[0_7px_29px_0_rgba(17,146,13,0.2)] p-3 ">
 <div v-if="btns == true" class="flex gap-5 mt-3 mb-1 mx-3">
-<button @click="selectedPick('yearly')"   :class="selected == 'yearly' ? '!bg-green/85' : 'bg-green-500/55'" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">Yıllık</button>
-<button @click="selectedPick('monthly3')" :class="selected == 'monthly3' ? '!bg-green/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">3 Aylık</button>
-<button @click="selectedPick('monthly')"  :class="selected == 'monthly' ? '!bg-green/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">Aylık</button>
-<button @click="selectedPick('weekly')"   :class="selected == 'weekly' ? '!bg-green/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">Haftalık</button>
-<button @click="selectedPick('daily')"    :class="selected == 'daily' ? '!bg-green/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/55 text-white rounded">Günlük</button>
+<button @click="selectedPick('yearly')"   :class="selected == 'yearly' ? '!bg-green-500/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/45 text-white rounded">Yıllık</button>
+<button @click="selectedPick('monthly3')" :class="selected == 'monthly3' ? '!bg-green-500/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/45 text-white rounded">3 Aylık</button>
+<button @click="selectedPick('monthly')"  :class="selected == 'monthly' ? '!bg-green-500/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/45 text-white rounded">Aylık</button>
+<button @click="selectedPick('weekly')"   :class="selected == 'weekly' ? '!bg-green-500/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/45 text-white rounded">Haftalık</button>
+<button @click="selectedPick('daily')"    :class="selected == 'daily' ? '!bg-green-500/85' : ''" class="w-30 rounded-4xl text-center py-2 bg-green-500/45 text-white rounded">Günlük</button>
 
 </div> 
 <div :id="chartid"></div>
@@ -17,13 +17,14 @@
 
 import ApexCharts from 'apexcharts';
 import { useRateStore } from "../../rateStore";
-import { ref } from 'vue';
 
-const selected = ref('daily')
+
+
 export default{
 
 
     setup() {
+       
         const store = useRateStore();
         return { store };
       },
@@ -34,7 +35,8 @@ export default{
     data(){
         return{
             currency: "USD",
-            
+            selected: "daily",
+            chartInstance: null,
         }
     },
     
@@ -70,6 +72,11 @@ export default{
       addChart(date,data,chartid,type=this.chartType,cur="USD") {
         const { values, labels } = this.processChartData(date,data,cur);
 
+          // 🔥 eski chart varsa sil
+          if (this.chartInstance) {
+            this.chartInstance.destroy();
+          }
+
         const options = {
           chart: {
             type: type,
@@ -94,7 +101,6 @@ export default{
           }],
           xaxis: {
             categories: labels,
-
             labels: {
             
               style: {
@@ -116,53 +122,88 @@ export default{
          
         };
 
-        const chart = new ApexCharts(document.querySelector(`#${chartid}`), options);
+        this.chartInstance = new ApexCharts(document.querySelector(`#${chartid}`), options);
 
-        chart.render();
+        this.chartInstance.render();
 
       },
 
-       processChartData(date,data, currency) {
-        const values = data.map(item => item.rates[currency].toFixed(2));
+processChartData(dateType, data, currency) {
+  const lastIndex = data.length - 1;
 
-        const labels = data.map((item, index, arr) => {
+  const shouldInclude = (item, index) => {
+    if (dateType === 'yearly')   return index % 30 === 0 || index === lastIndex;
+    if (dateType === 'monthly3') return index % 7 === 0  || index === lastIndex;
+    return true;
+  };
 
+  const filteredData = data.filter((item, index) => shouldInclude(item, index));
 
+  const values = filteredData.map(item =>
+    Number(item.rates[currency]).toFixed(2)
+  );
 
-        if (date === 'daily') {
+  const labels = filteredData.map((item) => {
+    // 🔹 DAILY → createdAt
+    if (dateType === 'daily') {
+      const d = new Date(item.createdAt);
+      const hour = d.toLocaleTimeString('tr-TR', {
+        hour: '2-digit',
+        hour12: false,
+        timeZone: 'Europe/Istanbul'
+      });
+      return `${hour}:00`;
+    }
 
-        const date = new Date(item.createdAt);
-        const hour = date.getHours().toString().padStart(2, '0') + ':00';
+    const d = new Date(item.date);
 
-          if (index === 0) return `${hour}`;
-          if (index === arr.length - 1) return `${hour}`;
+    // 🔹 WEEKLY & MONTHLY → gün + ay
+    if (dateType === 'weekly' || dateType === 'monthly') {
+      return d.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'Europe/Istanbul'
+      });
+    }
 
-          return hour;
-        }else{
-          const date = new Date(item.createdAt);
-          const day = date.getDate().toString().padStart(2, '0');
-          return day;
-        }
-        });
+    // 🔹 MONTHLY3 → haftalık (her 7. kayıt zaten filtrelendi)
+    if (dateType === 'monthly3') {
+      return d.toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'Europe/Istanbul'
+      });
+    }
 
-        return { values, labels };
-        },
+    // 🔹 YEARLY → aylık (her 30. kayıt zaten filtrelendi)
+    if (dateType === 'yearly') {
+      return d.toLocaleDateString('tr-TR', {
+        month: 'long',
+        timeZone: 'Europe/Istanbul'
+      });
+    }
+
+    return '';
+  });
+
+  return { values, labels };
+},
 
        selectedPick(date) {
-         selected.value = date;
+         this.selected = date;
         if (date === 'daily') {
           return this.addChart(date, this.daily, this.chartid,this.chartType, this.currency );
         } else if (date === 'weekly') {
-          //return addChart(date, this.weekly, this.chartid,this.chartType, "USD" );
+          return this.addChart(date, this.weekly, this.chartid,this.chartType, this.currency);
        
         } else if (date === 'monthly') {
-          //return addChart(date, this.monthly, this.chartid,this.chartType, "USD" );
+          return this.addChart(date, this.monthly, this.chartid,this.chartType, this.currency );
          
         } else if (date === 'monthly3') {
-        // return addChart(date, this.monthly3, this.chartid,this.chartType, "USD" );
+         return this.addChart(date, this.monthly3, this.chartid,this.chartType, this.currency );
       
         } else if (date === 'yearly') {
-        // return addChart(date, this.yearly, this.chartid,this.chartType, "USD" );
+         return this.addChart(date, this.yearly, this.chartid,this.chartType, this.currency );
    
         }
   },

@@ -100,10 +100,10 @@ cron.schedule("1 0 * * *", async () => {
   console.log("---------------------");
   console.log("Cron Görevi Başladı: Döviz Kurları Güncelleniyor...");
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+const today = new Date().toLocaleDateString("sv-SE"); 
 
-  try {
+
+ try {
     const data = await getLatestRates();
     if (!data) throw new Error("API'den veri alınamadı.");
 
@@ -120,12 +120,13 @@ cron.schedule("1 0 * * *", async () => {
     limitDate.setDate(limitDate.getDate() - 365);
     const deletedCount = await YearlyRate.deleteMany({ date: { $lt: limitDate } });
 
-    console.log(`Cron Başarılı: ${today.toLocaleDateString()} verisi kaydedildi.`);
+    console.log(`Cron Başarılı: ${today} verisi kaydedildi.`);
     console.log(`Eski Veri Temizliği: ${deletedCount.deletedCount} adet eski kayıt silindi.`);
 
   } catch (err) {
     console.error("Cron hatası:", err.message);
   }
+
 
   console.log("---------------------");
 } ,{
@@ -184,11 +185,11 @@ async function startServer() {
 
     console.log("Mongo bağlandı ✅");
     keepAlive(); 
+    
 
     app.listen(process.env.PORT || 3000, () => {
       console.log("Server çalışıyor 🚀");
     });
-
 
 
   } catch (err) {
