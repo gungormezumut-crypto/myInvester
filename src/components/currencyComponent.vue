@@ -9,7 +9,53 @@
 
 </div> 
 <div :id="chartid"></div>
+
+<div v-if="list == true" class=" h-25 overflow-y-auto">
+<div v-show="selected == 'daily'" class="w-full">
+<div class="my-3 flex gap-2 flex-col">
+<div v-if="store.daily[0].rates">
+  <div
+    v-for="(value, cur) in store.daily[0].rates"
+    :key="cur"
+    class="w-full flex justify-between items-center rounded"
+    @click="() => { currency = cur; selectedPick('daily'); }"
+  >
+    <div class="text-sm text-gray-600">
+      <span>{{ cur }}</span>
+    </div>
+
+    <div class="text-sm font-medium text-gray-800">
+      <span>{{ Number(value).toFixed(2) }}</span>
+    </div>
+  </div>
 </div>
+</div>
+</div>  
+
+<div v-show="selected == 'weekly'">
+
+</div>  
+
+<div v-show="selected == 'monthly'">
+
+</div>  
+
+<div v-show="selected == 'monthly3'">
+
+</div>  
+
+<div v-show="selected == 'yearly'">
+
+</div>  
+
+</div>
+
+</div>
+
+
+
+
+
 </template>
 
 
@@ -30,7 +76,7 @@ export default{
       },
 
 
-    props:['height','width','chartType','chartid','btns'],
+    props:['height','width','chartType','chartid','btns','list'],
 
     data(){
         return{
@@ -68,6 +114,8 @@ export default{
     },
 
     methods:{
+
+
 
       addChart(date,data,chartid,type=this.chartType,cur="USD") {
         const { values, labels } = this.processChartData(date,data,cur);

@@ -100,36 +100,40 @@ cron.schedule("1 0 * * *", async () => {
   console.log("---------------------");
   console.log("Cron Görevi Başladı: Döviz Kurları Güncelleniyor...");
 
-const today = new Date().toLocaleDateString("sv-SE"); 
+  try {
+    // ✅ BUG FIX: UTC gün başlangıcı (timezone sorunu yok)
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
 
-
- try {
     const data = await getLatestRates();
     if (!data) throw new Error("API'den veri alınamadı.");
 
     const converted = convertToTRY(data);
 
-    // ✅ Sadece günlük/yıllık modeli güncelle
+    // ✅ Günlük kayıt (aynı gün varsa update eder)
     await YearlyRate.findOneAndUpdate(
       { date: today },
       { rates: converted },
-      { upsert: true }
+      { upsert: true, new: true }
     );
 
+    // ✅ 365 günden eski verileri sil
     const limitDate = new Date();
+    limitDate.setUTCHours(0, 0, 0, 0);
     limitDate.setDate(limitDate.getDate() - 365);
-    const deletedCount = await YearlyRate.deleteMany({ date: { $lt: limitDate } });
 
-    console.log(`Cron Başarılı: ${today} verisi kaydedildi.`);
-    console.log(`Eski Veri Temizliği: ${deletedCount.deletedCount} adet eski kayıt silindi.`);
+    const deleted = await YearlyRate.deleteMany({
+      date: { $lt: limitDate },
+    });
 
+    console.log(`✔ Kayıt başarılı: ${today.toISOString()}`);
+    console.log(`🧹 Eski veri silindi: ${deleted.deletedCount} adet`);
   } catch (err) {
-    console.error("Cron hatası:", err.message);
+    console.error("❌ Cron hatası:", err.message);
   }
 
-
   console.log("---------------------");
-} ,{
+}, {
   timezone: "Europe/Istanbul"
 });
 
